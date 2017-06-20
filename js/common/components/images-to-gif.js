@@ -54,7 +54,7 @@ ImagesToGif.prototype.parseFrameTime = function (time) {
     if (time === 0) return parseFloat(time);// if time is round
 
     return time.toFixed(3);
-};t
+};
 
 /**
  * @param time in microseconds
