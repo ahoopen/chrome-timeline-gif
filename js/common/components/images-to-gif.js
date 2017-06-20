@@ -25,10 +25,11 @@ ImagesToGif.prototype.createDom = function () {
 ImagesToGif.prototype.initEncoder = function (loopsNumber) {
     //0  -> loop forever
     //1+ -> loop n times then stop
-    loopsNumber = loopsNumber || 0;
+    // loopsNumber = loopsNumber || 0;
 
     this.encoder = new GIFEncoder();
-    this.encoder.setRepeat(loopsNumber);
+    // this.encoder.setRepeat(3);
+
     this.encoder.start();
 };
 
@@ -53,7 +54,7 @@ ImagesToGif.prototype.parseFrameTime = function (time) {
     if (time === 0) return parseFloat(time);// if time is round
 
     return time.toFixed(3);
-};
+};t
 
 /**
  * @param time in microseconds
@@ -62,18 +63,18 @@ ImagesToGif.prototype.addTimeToCanvas = function (time) {
     var canvasData = this.canvasData;
     var ctx = canvasData.context;
     var indent = 5;
-    var x = canvasData.width - indent;
     var y = canvasData.height - indent;
+
     var text = this.parseFrameTime(time) + 's';
-    var fontSize = 20;// in pixels
+    var textWidth = ctx.measureText(text).width;
+    var fontSize = 30;// in pixels
 
     ctx.font = fontSize + "px Arial, Sans-serif";
-    ctx.textAlign = "end";
     ctx.strokeStyle = '#fff';
     ctx.lineWidth = indent;
-    ctx.strokeText(text, x, y);
+    ctx.strokeText(text, (canvasData.width / 2) - (textWidth /2 ), y);
     ctx.fillStyle = '#ff2e6b';
-    ctx.fillText(text, x, y);
+    ctx.fillText(text, (canvasData.width / 2) - (textWidth /2 ), y);
 };
 
 /**
@@ -96,6 +97,21 @@ ImagesToGif.prototype.screenshotToCanvas = function (params) {
     if (this.options.$showTimeCheckbox[0].checked) {
         this.addTimeToCanvas(params.currentFrame.ts - params.firstFrame.ts);
     }
+};
+
+ImagesToGif.prototype.toGreySCale = function(params) {
+    var imgPixels =  this.canvasData.context.getImageData(0, 0, params.loadedImage.img.width, params.loadedImage.img.height);
+
+    for(var y = 0; y < imgPixels.height; y++){
+        for(var x = 0; x < imgPixels.width; x++){
+            var i = (y * 4) * imgPixels.width + x * 4;
+            var avg = (imgPixels.data[i] + imgPixels.data[i + 1] + imgPixels.data[i + 2]) / 3;
+            imgPixels.data[i] = avg;
+            imgPixels.data[i + 1] = avg;
+            imgPixels.data[i + 2] = avg;
+        }
+    }
+    this.canvasData.context.putImageData(imgPixels, 0, 0, 0, 0, imgPixels.width, imgPixels.height);
 };
 
 ImagesToGif.prototype.imagesToGif = function (data) {
@@ -126,12 +142,21 @@ ImagesToGif.prototype.processImage = function (data, i, resolve, reject) {
     this.options.progressIndicator.setProgress(progress);
 
     var loadedImage = loadedImages[i];
+
     if (i === loadedImages.length - 1) {
+        // make last frame grey
+        this.toGreySCale({
+            loadedImage: loadedImage,
+            firstFrame: capturedFrames[0]
+        });
+        this.encoder.addFrame(this.canvasData.context);
+
         resolve();
         return;// skip the last
     }
     var currentFrame = capturedFrames[i];
     var nextFrame = capturedFrames[i + 1];
+
     if (loadedImage.img) {
         this.screenshotToCanvas({
             loadedImage: loadedImage,
